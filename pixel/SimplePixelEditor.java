@@ -5,18 +5,19 @@ import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.File;
 
-public class SimplePixelEditor extends JFrame {
+public class PixelArtEditor extends JFrame {
     private Color currentColor = Color.BLACK;
     private JPanel colorPalette;
     private DrawingPanel drawingPanel;
+    private int brushSize = 1; // Default brush size (1x1 pixel)
 
     public static void main(String[] args) {
-        new SimplePixelEditor();
+        new PixelArtEditor();
     }
 
-    public SimplePixelEditor() {
-        setTitle("Pixel Art Editor with Save");
-        setSize(700, 550);
+    public PixelArtEditor() {
+        setTitle("Pixel Art Editor with Brush Sizes");
+        setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
@@ -44,6 +45,25 @@ public class SimplePixelEditor extends JFrame {
         });
         buttonPanel.add(colorPickerBtn);
 
+        // Add brush size controls
+        JButton increaseBrushBtn = new JButton("Bigger Brush [+]");
+        increaseBrushBtn.addActionListener(e -> {
+            brushSize = Math.min(brushSize + 1, 10); // Max 10x10 brush
+            updateBrushStatus();
+        });
+        buttonPanel.add(increaseBrushBtn);
+
+        JButton decreaseBrushBtn = new JButton("Smaller Brush [-]");
+        decreaseBrushBtn.addActionListener(e -> {
+            brushSize = Math.max(brushSize - 1, 1); // Min 1x1 brush
+            updateBrushStatus();
+        });
+        buttonPanel.add(decreaseBrushBtn);
+
+        // Add brush size status label
+        JLabel brushStatus = new JLabel(" Brush: 1x1 ");
+        buttonPanel.add(brushStatus);
+
         // Add save button
         JButton saveBtn = new JButton("Save Image");
         saveBtn.addActionListener(e -> saveImage());
@@ -58,6 +78,11 @@ public class SimplePixelEditor extends JFrame {
         add(controlPanel, BorderLayout.SOUTH);
 
         setVisible(true);
+        
+        // Helper method to update brush status
+        void updateBrushStatus() {
+            brushStatus.setText(" Brush: " + brushSize + "x" + brushSize + " ");
+        }
     }
 
     private void createColorPalette() {
@@ -83,24 +108,18 @@ public class SimplePixelEditor extends JFrame {
     private void saveImage() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Image");
-        
-        // Set default filename
         fileChooser.setSelectedFile(new File("pixel_art.png"));
         
-        // Show save dialog
         int userSelection = fileChooser.showSaveDialog(this);
         
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
-            
-            // Ensure .png extension
             String filePath = fileToSave.getAbsolutePath();
             if (!filePath.toLowerCase().endsWith(".png")) {
                 fileToSave = new File(filePath + ".png");
             }
             
             try {
-                // Save the image
                 ImageIO.write(drawingPanel.getImage(), "png", fileToSave);
                 JOptionPane.showMessageDialog(this, "Image saved successfully!", 
                     "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -122,25 +141,34 @@ public class SimplePixelEditor extends JFrame {
 
             addMouseListener(new MouseAdapter() {
                 public void mousePressed(MouseEvent e) {
-                    drawPixel(e.getX(), e.getY());
+                    drawBlock(e.getX(), e.getY());
                 }
             });
 
             addMouseMotionListener(new MouseMotionAdapter() {
                 public void mouseDragged(MouseEvent e) {
-                    drawPixel(e.getX(), e.getY());
+                    drawBlock(e.getX(), e.getY());
                 }
             });
         }
 
-        private void drawPixel(int screenX, int screenY) {
+        private void drawBlock(int screenX, int screenY) {
             int pixelX = screenX / PIXEL_SIZE;
             int pixelY = screenY / PIXEL_SIZE;
 
-            if (pixelX >= 0 && pixelX < GRID_SIZE && pixelY >= 0 && pixelY < GRID_SIZE) {
-                image.setRGB(pixelX, pixelY, currentColor.getRGB());
-                repaint();
+            Graphics2D g = image.createGraphics();
+            g.setColor(currentColor);
+            
+            // Draw a square block of the current brush size
+            for (int x = pixelX; x < pixelX + brushSize && x < GRID_SIZE; x++) {
+                for (int y = pixelY; y < pixelY + brushSize && y < GRID_SIZE; y++) {
+                    if (x >= 0 && y >= 0) {
+                        image.setRGB(x, y, currentColor.getRGB());
+                    }
+                }
             }
+            g.dispose();
+            repaint();
         }
 
         public void clearImage() {
@@ -170,6 +198,17 @@ public class SimplePixelEditor extends JFrame {
             for (int i = 0; i <= GRID_SIZE; i++) {
                 g.drawLine(i * PIXEL_SIZE, 0, i * PIXEL_SIZE, GRID_SIZE * PIXEL_SIZE);
                 g.drawLine(0, i * PIXEL_SIZE, GRID_SIZE * PIXEL_SIZE, i * PIXEL_SIZE);
+            }
+            
+            // Draw brush size preview
+            if (brushSize > 1) {
+                g.setColor(new Color(0, 0, 0, 50));
+                Point mousePos = getMousePosition();
+                if (mousePos != null) {
+                    int pixelX = (mousePos.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    int pixelY = (mousePos.y / PIXEL_SIZE) * PIXEL_SIZE;
+                    g.fillRect(pixelX, pixelY, brushSize * PIXEL_SIZE, brushSize * PIXEL_SIZE);
+                }
             }
         }
     }
