@@ -2,29 +2,38 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.io.File;
 
 public class SimplePixelEditor extends JFrame {
     private Color currentColor = Color.BLACK;
     private JPanel colorPalette;
+    private DrawingPanel drawingPanel;
 
     public static void main(String[] args) {
         new SimplePixelEditor();
     }
 
     public SimplePixelEditor() {
-        setTitle("Pixel Art Editor with Colors");
-        setSize(700, 500);
+        setTitle("Pixel Art Editor with Save");
+        setSize(700, 550);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
         // Create drawing panel
-        DrawingPanel drawingPanel = new DrawingPanel();
+        drawingPanel = new DrawingPanel();
         add(drawingPanel, BorderLayout.CENTER);
 
+        // Create control panel
+        JPanel controlPanel = new JPanel(new BorderLayout());
+        
         // Create color palette panel
         createColorPalette();
-        add(colorPalette, BorderLayout.SOUTH);
+        controlPanel.add(colorPalette, BorderLayout.CENTER);
 
+        // Create button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        
         // Add color picker button
         JButton colorPickerBtn = new JButton("Custom Color");
         colorPickerBtn.addActionListener(e -> {
@@ -33,7 +42,20 @@ public class SimplePixelEditor extends JFrame {
                 currentColor = newColor;
             }
         });
-        add(colorPickerBtn, BorderLayout.NORTH);
+        buttonPanel.add(colorPickerBtn);
+
+        // Add save button
+        JButton saveBtn = new JButton("Save Image");
+        saveBtn.addActionListener(e -> saveImage());
+        buttonPanel.add(saveBtn);
+
+        // Add clear button
+        JButton clearBtn = new JButton("Clear");
+        clearBtn.addActionListener(e -> drawingPanel.clearImage());
+        buttonPanel.add(clearBtn);
+
+        controlPanel.add(buttonPanel, BorderLayout.NORTH);
+        add(controlPanel, BorderLayout.SOUTH);
 
         setVisible(true);
     }
@@ -55,6 +77,37 @@ public class SimplePixelEditor extends JFrame {
             colorBtn.setPreferredSize(new Dimension(30, 30));
             colorBtn.addActionListener(e -> currentColor = color);
             colorPalette.add(colorBtn);
+        }
+    }
+
+    private void saveImage() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Image");
+        
+        // Set default filename
+        fileChooser.setSelectedFile(new File("pixel_art.png"));
+        
+        // Show save dialog
+        int userSelection = fileChooser.showSaveDialog(this);
+        
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+            
+            // Ensure .png extension
+            String filePath = fileToSave.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".png")) {
+                fileToSave = new File(filePath + ".png");
+            }
+            
+            try {
+                // Save the image
+                ImageIO.write(drawingPanel.getImage(), "png", fileToSave);
+                JOptionPane.showMessageDialog(this, "Image saved successfully!", 
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error saving image: " + ex.getMessage(), 
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
@@ -90,11 +143,16 @@ public class SimplePixelEditor extends JFrame {
             }
         }
 
-        private void clearImage() {
+        public void clearImage() {
             Graphics2D g = image.createGraphics();
             g.setColor(Color.WHITE);
             g.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
             g.dispose();
+            repaint();
+        }
+
+        public BufferedImage getImage() {
+            return image;
         }
 
         protected void paintComponent(Graphics g) {
